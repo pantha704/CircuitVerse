@@ -116,4 +116,31 @@ RSpec.describe Grade, type: :model do
       end
     end
   end
+
+  describe ".csv_cell" do
+    it "prefixes every value a spreadsheet would evaluate as a formula" do
+      ["=1+1", "+1+1", "-1+1", "@SUM(A1)", "\tcmd", "\rcmd"].each do |payload|
+        expect(described_class.csv_cell(payload)).to eq("'#{payload}")
+      end
+    end
+
+    it "decodes entities before checking, so an encoded payload cannot slip through" do
+      expect(described_class.csv_cell("&#61;SUM(A1)")).to eq("'=SUM(A1)")
+    end
+
+    it "returns plain text without HTML entities" do
+      expect(described_class.csv_cell("a &lt; b")).to eq("a < b")
+      expect(described_class.csv_cell("rock &amp; roll")).to eq("rock & roll")
+    end
+
+    it "leaves safe values untouched" do
+      ["A", "85", "N.A", "remark", ""].each do |value|
+        expect(described_class.csv_cell(value)).to eq(value)
+      end
+    end
+
+    it "handles nil as an empty cell" do
+      expect(described_class.csv_cell(nil)).to eq("")
+    end
+  end
 end
